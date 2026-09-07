@@ -10,31 +10,55 @@ python src/calibrar.py   # una vez, requiere 2 clics en la cinta métrica
 python src/main.py       # corre el resto (~1 min)
 ```
 
+## ⚠️ Unidades
+
+Todos los ángulos están en **radianes** (no grados). Las velocidades y aceleraciones angulares también.
+
+| Magnitud | Unidad en los CSV/JSON | Cómo convertir a grados |
+|---|---|---|
+| `theta_*` | rad | multiplicar por `180/π` |
+| `omega_*` | rad/s | multiplicar por `180/π` → grados/s |
+| `alpha_*` | rad/s² | multiplicar por `180/π` → grados/s² |
+| `x_px, y_px` | píxeles | solo convertir si necesitas metros (× `k_m_por_px`) |
+| `t_s` | segundos | — |
+| `L_m` | metros | — |
+| `b` | N·m·s/rad | — |
+| `k_m_por_px` | metros/píxel | — |
+
+> Para visualizar en grados en las gráficas, multiplicar las columnas `theta_*` por `180/π` antes de graficar. El pipeline entrega radianes (unidades SI) por consistencia con las fórmulas del enunciado.
+
 ## Archivos
 
 ### `calibracion.json`
 Parámetros geométricos del montaje.
 
-| Campo | Significado | Uso |
-|---|---|---|
-| `pivote_xy_px` | Coordenadas (x, y) del pivote en píxeles | Para el video: dibujar la línea vertical de referencia y la línea pivote→masa |
-| `L_px` | Distancia pivote-masa en píxeles | Radio de la trayectoria circular |
-| `k_m_por_px` | Factor de escala metros/píxel | Para el video: convertir píxeles a metros |
-| `L_m` | Longitud L en metros (inferida del período) | Parámetro físico del péndulo |
+| Campo | Unidad | Significado | Uso |
+|---|---|---|---|
+| `pivote_xy_px` | px | Coordenadas del pivote en píxeles | Para el video: dibujar la línea vertical de referencia y la línea pivote→masa |
+| `L_px` | px | Distancia pivote-masa en píxeles | Radio de la trayectoria circular |
+| `k_m_por_px` | m/px | Factor de escala metros/píxel | Para el video: convertir píxeles a metros |
+| `L_m_clicks` | m | Longitud L en metros (de los clics en la regla) | Parámetro físico del péndulo |
+| `L_target_m` | m | L inferida del período (`g·T²/(4π²)`) | Referencia para comparación |
+| `T_exp_s` | s | Período medido del video | Para calcular `L_target_m` |
+| `T_ceros_s` | s | Período por cruces por cero | Método principal |
+| `T_auto_s` | s | Período por autocorrelación | Verificación |
 
 ### `modelo_params.json`
 Parámetros ajustados de los modelos.
 
-| Campo | Valor | Significado |
+| Campo | Unidad | Significado |
 |---|---|---|
-| `theta0_rad` / `theta0_deg` | ej. 0.289 / 16.6° | Amplitud inicial (medida del primer pico) |
-| `omega_n_rad_s` | ej. 4.49 | Frecuencia natural del M.A.S. |
-| `T_MAS_s` | ej. 1.400 | Período teórico |
-| `L_m` | ej. 0.487 | Longitud inferida del período |
-| `m_kg` | 0.1 | Masa asumida de la bola |
-| `b_opt_Nms_rad` | ej. 0.0008 | Coeficiente de fricción ajustado |
-| `rmse_sim_rad` | ej. 0.109 | RMSE de la simulación vs experimental |
-| `t_peak_s` | ej. 0.08 | Tiempo del primer pico usado como origen |
+| `theta0_rad` | rad | Amplitud inicial (medida del primer pico) |
+| `theta0_deg` | grados | Misma amplitud en grados |
+| `omega_n_rad_s` | rad/s | Frecuencia natural del M.A.S. |
+| `T_MAS_s` | s | Período del M.A.S. (= T_exp medido) |
+| `L_m_clicks` | m | Longitud calibrada con regla |
+| `L_target_m` | m | Longitud inferida del período |
+| `diferencia_porcentaje` | % | Discrepancia entre las dos |
+| `m_kg` | kg | Masa asumida de la bola |
+| `b_opt_Nms_rad` | N·m·s/rad | Coeficiente de fricción ajustado |
+| `rmse_sim_rad` | rad | RMSE de la simulación vs experimental |
+| `t_peak_s` | s | Tiempo del primer pico usado como origen |
 
 ### `tracking.csv`
 Centroide de la bola en cada frame (paso 6 del PDF).
@@ -65,7 +89,7 @@ Señales teóricas: M.A.S. y simulación no lineal con fricción (sección 3.4 d
 | Columna | Unidad | Descripción |
 |---|---|---|
 | `t_s` | s | Tiempo (origen en el primer pico experimental) |
-| `theta_teo_rad` | rad | `θ₀·cos(ωₙ·t)` |
+| `theta_teo_rad` | rad | `θ₀·cos(ωₙ·t)` (M.A.S. sin fricción) |
 | `omega_teo_rad_s` | rad/s | `-θ₀·ωₙ·sin(ωₙ·t)` |
 | `alpha_teo_rad_s2` | rad/s² | `-ωₙ²·θ(t)` |
 | `theta_sim_rad` | rad | Solución numérica EDO con fricción |
@@ -73,16 +97,13 @@ Señales teóricas: M.A.S. y simulación no lineal con fricción (sección 3.4 d
 | `alpha_sim_rad_s2` | rad/s² | Aceleración angular de la simulación |
 
 ### `metricas.csv`
-Tabla de errores (sección 3.4 del PDF).
+Tabla de errores (sección 3.4 del PDF). Las unidades dependen de la variable:
 
-| Columna | Descripción |
-|---|---|
-| `variable` | `theta`, `omega` o `alpha` |
-| `modelo` | `MAS` (sin fricción) o `no_lineal_friccion` |
-| `RMSE` | Error cuadrático medio en rad (o rad/s, rad/s²) |
-| `MAE` | Error absoluto medio |
-| `Pearson` | Correlación (1 = perfecto) |
-| `lag_s` | Desfase temporal del máximo de correlación cruzada |
+| `variable` | `RMSE` y `MAE` | `Pearson` | `lag_s` |
+|---|---|---|---|
+| `theta` | rad | adimensional | s |
+| `omega` | rad/s | adimensional | s |
+| `alpha` | rad/s² | adimensional | s |
 
 ## Cómo usar estos datos
 
@@ -103,14 +124,13 @@ df = pd.read_csv('resultados/cinematica.csv')
 
 # 3. Cargar video
 cap = cv2.VideoCapture('pendulo.mp4')
-fps = cap.get(cv2.CAP_PROP_FPS)
 fps = 25  # confirmado
 
 # 4. Por cada frame, dibujar:
 #    - trayectoria (estela) con los últimos N centroides
 #    - línea pivote (x0, y0) → bola (x_px, y_px)
 #    - línea vertical punteada en x=x0
-#    - panel de telemetría con theta, omega, alpha
+#    - panel de telemetría con theta, omega, alpha (recordar: en radianes)
 ```
 
 ### Para la gráfica comparativa (compañero)
@@ -118,17 +138,18 @@ fps = 25  # confirmado
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
-df_c = pd.read_csv('resultados/cinematica.csv')
+df_c = pd.read_csv('resultados/cinematica.csv')   # columnas en radianes
 df_m = pd.read_csv('resultados/modelos.csv')
 
 t = df_c['t_s'].values
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(t, df_c['theta_rad'], 'b-', label='experimental', lw=1)
-ax.plot(t, df_m['theta_teo_rad'], 'r-', label='M.A.S.')
-ax.plot(t, df_m['theta_sim_rad'], 'g-', label='no lineal + fricción')
+ax.plot(t, np.degrees(df_c['theta_rad']), 'b-', label='experimental', lw=1)
+ax.plot(t, np.degrees(df_m['theta_teo_rad']), 'r-', label='M.A.S.')
+ax.plot(t, np.degrees(df_m['theta_sim_rad']), 'g-', label='no lineal + fricción')
 ax.set_xlabel('t [s]')
-ax.set_ylabel(r'$\theta$ [rad]')
+ax.set_ylabel(r'$\theta$ [°]')   # en grados para visualizar
 ax.legend()
 ax.grid(alpha=0.3)
 ```
