@@ -22,6 +22,7 @@ import tracking           # noqa: E402
 import cinematica         # noqa: E402
 import modelo             # noqa: E402
 import metricas           # noqa: E402
+import video_anotado      # noqa: E402
 
 
 def paso_tracking() -> None:
@@ -53,6 +54,12 @@ def paso_metricas() -> None:
     metricas.main()
 
 
+def paso_video() -> None:
+    print("\n[5/5] Video anotado...")
+    out = video_anotado.exportar()
+    print(f"  -> {out.relative_to(ROOT)}")
+
+
 def main() -> None:
     if not (ROOT / "resultados" / "calibracion.json").exists():
         raise SystemExit(
@@ -63,7 +70,8 @@ def main() -> None:
     paso_cinematica()
     paso_modelo()
     paso_metricas()
-    print("\nListo. Todos los CSV estan en resultados/")
+    paso_video()
+    print("\nListo. Todos los CSV y el video estan en resultados/")
 
 
 if __name__ == "__main__":
