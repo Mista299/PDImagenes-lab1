@@ -32,7 +32,7 @@ FIGS = ROOT / "figs"
 # Estilo consistente para las 4 figuras
 COLOR_EXP = "#1f77b4"       # azul - experimental
 COLOR_MAS = "#d62728"       # rojo - M.A.S. teorico (sin friccion)
-COLOR_SIM = "#2ca02c"       # verde - simulacion no lineal con friccion
+COLOR_SIM = "#ffff08"       # verde - simulacion no lineal con friccion
 
 
 def cargar_datos() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
